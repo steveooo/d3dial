@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Speedometer</title>
+    
+    <style>
+    	html, body {width:100%;height:100%;padding:0;margin:0;}
+    	.container {width:100%;height:100%;}
+    	.meter {height:100%;border-radius:800px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);}
+    	.background {transition:fill 2.5s ease;fill: rgba(0,255,0,0.2);}
+    	.min {fill:rgba(0,255,0,0.2);}
+    	.mid {fill:rgba(255,165,0,0.2);}
+    	.max {fill:rgba(255,0,0,0.2);}
+    </style>
+</head>
+<body>
+	<div class="container">
+		<svg id="meter1" class="meter"></svg>
+	</div>
+
+	<script src="./d3.min.js" charset="utf-8"></script>
+	<script src="./jquery-2.2.3.min.js" charset="utf-8"></script>
+	<script>
+		var staticScale = 440;
+		var data = [{
+			"id":1,
+			"src":"./meter.png",
+			"width":staticScale,
+			"height":staticScale,
+			"dsrc":"./dial.png",
+			"dwidth":56,
+			"dheight":176,
+			"dangle":0
+		}];
+		var svg = d3.select("#meter1"),
+		needleScale = d3.scale.linear().domain([0, 1]).range([-120, 120]).clamp(true),
+		colorScale = d3.scale.linear().domain([0, 1]).range([0, 180]),
+		duration = 2000;
+		
+		//give it quick responsive treatment
+		svg.attr("style","max-width:"+staticScale+"px;max-height:"+staticScale+"px;")
+		.attr("preserveAspectRatio", "xMinYMin meet")
+		.attr("viewBox", "0 0 "+staticScale + " " + staticScale)
+		.classed("svg-content", true);
+		
+
+		function update() {
+			var node = svg.selectAll("g.dial").data(data, function(d) { return d.id; });
+			var nodeEnter = node.enter().append("svg:g").attr("class", "dial");
+			
+			nodeEnter.append("defs")
+			.append("pattern")
+			.attr("id", function(d){ return "needle_"+d.id;})
+			.attr("x", "0%")
+			.attr("y", "0%")
+			.attr("height", "100%")
+			.attr("width", "100%")
+				.append("svg:image")
+		        .attr("xmlns:xlink", "http://www.w3.org/1999/xlink")
+		        .attr("xlink:href", function(d) { return d.dsrc;})
+		        .attr("x", function(d) { return ((d.width/2)-(d.dwidth/2));})
+		        .attr("y", function(d) { /*use math for this instead*/return 73;})
+		        .attr("width", function(d) { return d.dwidth;})
+				.attr("height", function(d) { return d.dheight;});
+			
+			nodeEnter.append("svg:circle")
+		    .attr("r", function(d) { return d.width/2; })
+		    .attr("cx", function(d) { return d.width/2; })
+		    .attr("cy", function(d) { return d.width/2; })
+		    .attr("class", "min background");
+			
+			nodeEnter.append("svg:image")
+	        .attr("xlink:href",  function(d) { return d.src;})
+	        .attr("x", function(d) { return 0;})
+	        .attr("y", function(d) { return 0;})
+	        .attr("height", 100+"%")
+	        .attr("width", 100+"%");
+
+			nodeEnter
+			.append("svg:circle")
+			.attr("class","needle")
+		    .attr("r", function(d) { return d.width/2; })
+		    .attr("cx", function(d) { return 0; })
+		    .attr("cy", function(d) { return 0; })
+		    .attr("fill", function(d) { return "url(#needle_"+d.id+")";})
+		    .attr('transform', function(d) { return "translate("+(staticScale/2)+","+(staticScale/2)+") rotate(" + needleScale(d.dangle) + ")"; });
+		
+			var nodeUpdate = node.transition()
+			.ease("linear")
+			.duration(duration);
+			
+			nodeUpdate.select(".needle")
+			.attr('transform', function(d) { return "translate("+(staticScale/2)+","+(staticScale/2)+") rotate(" + needleScale(d.dangle) + ")"; });
+		
+			nodeUpdate.select(".background")
+			.attr("class", function(d) {
+				var thisColor = colorScale(d.dangle);
+				if(thisColor <= 60)
+					return "min background";
+				if(thisColor <= 120)
+					return "mid background";
+				if(thisColor <= 180)
+					return "max background";
+			});
+		}
+
+		update();
+		var interval = window.setInterval(function() {
+			var currentAngle = data[0].dangle,
+			newAngle = Math.random()
+			incriment = Math.random()*0.2;
+			
+			if(newAngle < currentAngle)
+				data[0].dangle = (currentAngle-incriment)>=0? (currentAngle-incriment) : 0;
+			else if(newAngle > currentAngle)
+				data[0].dangle = (currentAngle+incriment)<=1? (currentAngle+incriment) : 1;
+			else
+				data[0].dangle = newAngle;
+
+			update();
+		},4000);
+		
+
+		var interval2 = window.setInterval(function() {
+			var micro = 0.0005;
+			var newAngle = data[0].dangle+micro <= 1 ? data[0].dangle+micro : data[0].dangle-micro;
+			data[0].dangle = newAngle >= 0 && newAngle <= 1 ? newAngle : 0;
+
+			update();
+		},100);
+		
+	</script>
+
+</body>
+</html>
